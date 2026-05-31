@@ -1,5 +1,4 @@
 import mongoose, { Schema } from 'mongoose';
-// FIX: was '../constants/index.js' — wrong path, all other models use '../constant.js'
 import { COACH_CLASS_LIST } from '../constant.js';
 
 const discountSchema = new Schema(
