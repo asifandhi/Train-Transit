@@ -1,6 +1,3 @@
-// File: src/controllers/cancellation.controller.js
-// Status: 36 of 57
-
 import { asyncHandler } from '../utils/asyncHandler.js'
 import apiError from '../utils/apiError.js'
 import apiResponse from '../utils/apiResponse.js'
@@ -40,13 +37,11 @@ export const cancelBooking = asyncHandler(async (req, res) => {
 
   if (now >= departureDatetime) throw new apiError(400, 'Cannot cancel after train has departed')
 
-  // calculateRefund must return { refundPercent, refundAmount, hoursBeforeDeparture }
   const { refundPercent, refundAmount, hoursBeforeDeparture } = calculateRefund(
     booking.fare.totalFare,
     departureDatetime
   )
 
-  // Create cancellation record — fields match cancellation.model.js exactly
   const cancellation = await Cancellation.create({
     booking: booking._id,
     pnr: PNR,
@@ -60,7 +55,6 @@ export const cancelBooking = asyncHandler(async (req, res) => {
     reason: reason || 'Not specified',
   })
 
-  // Restore schedule seat counts via $inc (thread-safe)
   const cls = booking.coachClass
   const counts = { confirmed: 0, RAC: 0, waitlist: 0 }
   booking.passengers.forEach((p) => {
@@ -78,19 +72,16 @@ export const cancelBooking = asyncHandler(async (req, res) => {
     await Schedule.findByIdAndUpdate(schedule._id, { $inc: incUpdate })
   }
 
-  // Update booking status
   booking.bookingStatus = 'cancelled'
   if (booking.paymentStatus === 'paid') booking.paymentStatus = 'refunded'
   await booking.save({ validateBeforeSave: false })
 
-  // Promote waitlist → RAC → confirmed (non-blocking, log only)
   try {
     await promoteWaitlist(schedule._id, cls)
   } catch (err) {
     console.error('Waitlist promotion failed:', err.message)
   }
 
-  // Send cancellation email (non-blocking)
   try {
     await sendCancellationEmail(booking, cancellation)
   } catch (err) {
@@ -114,7 +105,6 @@ export const cancelBooking = asyncHandler(async (req, res) => {
   )
 })
 
-// ── GET /api/cancellation/refund/:PNR  (auth) ───────────
 export const getRefundStatus = asyncHandler(async (req, res) => {
   const { PNR } = req.params
 
@@ -146,5 +136,3 @@ export const getRefundStatus = asyncHandler(async (req, res) => {
     )
   )
 })
-
-// ✅ Done. Next: src/controllers/discount.controller.js

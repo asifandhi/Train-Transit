@@ -1,6 +1,3 @@
-// File: src/controllers/discount.controller.js
-// Status: 37 of 57
-
 import { asyncHandler } from '../utils/asyncHandler.js'
 import apiError from '../utils/apiError.js'
 import apiResponse from '../utils/apiResponse.js'
@@ -9,7 +6,6 @@ import { validateDiscount } from '../utils/discountValidator.util.js'
 import { uploadOnCloudinary } from '../utils/cloudinary.util.js'
 import { DISCOUNT_RULES } from '../constant.js'
 
-// ── POST /api/discount/validate  (auth) ─────────────────
 export const validateAndApplyDiscount = asyncHandler(async (req, res) => {
   const { discountType, coachClass } = req.body
 
@@ -21,7 +17,6 @@ export const validateAndApplyDiscount = asyncHandler(async (req, res) => {
 
   const user = req.user
 
-  // validateDiscount throws apiError on ineligibility
   let validationResult
   try {
     validationResult = validateDiscount({
@@ -40,7 +35,6 @@ export const validateAndApplyDiscount = asyncHandler(async (req, res) => {
   if (proofRequired && !req.file)
     throw new apiError(400, 'Proof document is required for this discount type')
 
-  // Upload proof via cloudinary.util.js (handles local file cleanup internally)
   let proofUrl      = null
   let proofPublicId = null
 
@@ -51,7 +45,6 @@ export const validateAndApplyDiscount = asyncHandler(async (req, res) => {
     proofPublicId = result.public_id
   }
 
-  // allowedClass is an array in model (e.g. student → ["GN"], senior → all classes)
   const discount = await Discount.create({
     user:            user._id,
     discountType,
@@ -59,7 +52,7 @@ export const validateAndApplyDiscount = asyncHandler(async (req, res) => {
     allowedClass:    rule.allowedClasses,
     proofUrl,
     proofPublicId,
-    isVerified:      !proofRequired, // auto-approve if no proof needed (e.g. senior)
+    isVerified:      !proofRequired,
   })
 
   return res.status(201).json(

@@ -1,6 +1,3 @@
-// File: src/controllers/meal.controller.js
-// Status: 34 of 57
-
 import { asyncHandler } from '../utils/asyncHandler.js'
 import apiError from '../utils/apiError.js'
 import apiResponse from '../utils/apiResponse.js'
@@ -9,7 +6,6 @@ import Meal from '../models/meal.model.js'
 const VALID_CATEGORIES = ['veg', 'non-veg', 'jain']
 const VALID_MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snacks']
 
-// ── GET /api/meals  (public) ─────────────────────────────
 export const getAllMeals = asyncHandler(async (req, res) => {
   const filter = { isAvailable: true }
 
@@ -23,7 +19,6 @@ export const getAllMeals = asyncHandler(async (req, res) => {
   )
 })
 
-// ── POST /api/meals  (admin) ─────────────────────────────
 export const addMeal = asyncHandler(async (req, res) => {
   const { name, description, price, category, mealType, image } = req.body
 
@@ -52,5 +47,3 @@ export const addMeal = asyncHandler(async (req, res) => {
     new apiResponse(201, { meal }, 'Meal added successfully')
   )
 })
-
-// ✅ Done. Next: src/controllers/payment.controller.js

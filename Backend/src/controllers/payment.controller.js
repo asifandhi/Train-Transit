@@ -9,9 +9,6 @@ import crypto from 'crypto'
 import Booking from '../models/booking.model.js'
 import { sendBookingConfirmationEmail } from '../services/email.service.js'
 
-// ─────────────────────────────────────────────
-// HELPER: lazy-init Razorpay instance
-// ─────────────────────────────────────────────
 const getRazorpayInstance = () => {
   const Razorpay = (await import('razorpay')).default
   return new Razorpay({
@@ -20,9 +17,7 @@ const getRazorpayInstance = () => {
   })
 }
 
-// ─────────────────────────────────────────────
-// POST /api/payment/initiate  (auth)
-// ─────────────────────────────────────────────
+
 export const initiatePayment = asyncHandler(async (req, res) => {
   const { pnr } = req.body
 
@@ -35,7 +30,7 @@ export const initiatePayment = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Booking not found for this PNR')
   }
 
-  // Verify owner
+ 
   if (booking.user.toString() !== req.user._id.toString()) {
     throw new ApiError(403, 'You are not authorized to pay for this booking')
   }
@@ -56,7 +51,6 @@ export const initiatePayment = asyncHandler(async (req, res) => {
     throw new ApiError(500, 'Payment gateway not configured')
   }
 
-  // Lazy-load Razorpay to avoid startup errors
   let Razorpay;
   try {
     Razorpay = (await import('razorpay')).default
@@ -86,7 +80,6 @@ export const initiatePayment = asyncHandler(async (req, res) => {
     throw new ApiError(502, `Razorpay order creation failed: ${err.message}`)
   }
 
-  // Save Razorpay order ID to booking
   booking.razorpayOrderId = order.id
   await booking.save({ validateBeforeSave: false })
 
@@ -106,9 +99,6 @@ export const initiatePayment = asyncHandler(async (req, res) => {
   )
 })
 
-// ─────────────────────────────────────────────
-// POST /api/payment/verify  (auth)
-// ─────────────────────────────────────────────
 export const verifyPayment = asyncHandler(async (req, res) => {
   const {
     razorpay_order_id,
@@ -124,7 +114,6 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     )
   }
 
-  // Verify HMAC signature
   const expectedSignature = crypto
     .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -134,13 +123,11 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Payment verification failed: invalid signature')
   }
 
-  // Find booking
   const booking = await Booking.findOne({ pnr })
   if (!booking) {
     throw new ApiError(404, 'Booking not found for this PNR')
   }
 
-  // Verify owner
   if (booking.user.toString() !== req.user._id.toString()) {
     throw new ApiError(403, 'You are not authorized to verify this payment')
   }
@@ -149,7 +136,6 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Order ID mismatch')
   }
 
-  // Update booking payment details
   booking.paymentStatus = 'paid'
   booking.razorpayPaymentId = razorpay_payment_id
   booking.razorpaySignature = razorpay_signature
@@ -157,18 +143,15 @@ export const verifyPayment = asyncHandler(async (req, res) => {
 
   await booking.save({ validateBeforeSave: false })
 
-  // Populate booking for email
   const populatedBooking = await Booking.findById(booking._id)
     .populate('train', 'trainName trainNumber')
     .populate('fromStation', 'stationCode stationName city')
     .populate('toStation', 'stationCode stationName city')
     .populate('user', 'name email')
 
-  // Send confirmation email (non-blocking)
   try {
     await sendBookingConfirmationEmail(populatedBooking)
   } catch (emailErr) {
-    // Log but do not fail the request
     console.error('Email sending failed:', emailErr.message)
   }
 

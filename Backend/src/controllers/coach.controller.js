@@ -1,5 +1,3 @@
-// File: src/controllers/coach.controller.js
-// Status: 30 of 57
 
 import { asyncHandler } from '../utils/asyncHandler.js'
 import apiError from '../utils/apiError.js'
@@ -9,7 +7,6 @@ import { Train } from '../models/train.model.js'
 import { Seat } from '../models/seat.model.js'
 import { COACH_CLASS_LIST } from '../constant.js'
 
-// ── HELPER ──────────────────────────────────────────────
 const getBerthType = (i, coachClass) => {
   if (coachClass === 'SL' || coachClass === '3A')
     return ['lower','middle','upper','lower','middle','upper','sideUpper','sideLower'][i % 8]
@@ -20,7 +17,6 @@ const getBerthType = (i, coachClass) => {
   return 'seat' // CC, EC, GN
 }
 
-// ── POST /api/coaches  (admin) ───────────────────────────
 export const addCoach = asyncHandler(async (req, res) => {
   const {
     trainId, coachNumber, coachClass,
@@ -37,7 +33,6 @@ export const addCoach = asyncHandler(async (req, res) => {
   const train = await Train.findById(trainId)
   if (!train) throw new apiError(404, 'Train not found')
 
-  // unique index on model handles this, but give a clean error
   const duplicate = await Coach.findOne({ train: trainId, coachNumber })
   if (duplicate) throw new apiError(409, `Coach ${coachNumber} already exists on this train`)
 
@@ -70,7 +65,6 @@ export const addCoach = asyncHandler(async (req, res) => {
   )
 })
 
-// ── GET /api/coaches/:trainId  (public) ─────────────────
 export const getCoachesByTrain = asyncHandler(async (req, res) => {
   const { trainId } = req.params
 
@@ -86,7 +80,6 @@ export const getCoachesByTrain = asyncHandler(async (req, res) => {
   )
 })
 
-// ── DELETE /api/coaches/:id  (admin — soft delete) ──────
 export const deleteCoach = asyncHandler(async (req, res) => {
   const { id } = req.params
 
