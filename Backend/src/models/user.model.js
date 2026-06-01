@@ -78,6 +78,8 @@ const userSchema = new Schema(
   },
   { timestamps: true }
 );
+
+
 // might occuring the error 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

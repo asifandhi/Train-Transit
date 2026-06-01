@@ -85,4 +85,4 @@ const routeSchema = new Schema(
 routeSchema.index({ train: 1, isActive: 1 });
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default mongoose.model('Route', routeSchema);
+export const Route =  mongoose.model('Route', routeSchema);

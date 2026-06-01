@@ -51,4 +51,4 @@ const cancellationSchema = new Schema(
   { timestamps: true }
 );
 
-export default mongoose.model('Cancellation', cancellationSchema);
+export const Cancellation = mongoose.model('Cancellation', cancellationSchema);
