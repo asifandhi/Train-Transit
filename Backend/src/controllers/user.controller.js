@@ -1,7 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import apiResponse from "../utils/apiResponse.js";
-
 import { User } from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { COOKIE_OPTIONS } from "../constant.js";
@@ -80,9 +79,6 @@ export const register = asyncHandler(async (req, res) => {
   }
 });
 
-
-// POST /api/auth/login
-
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -118,9 +114,6 @@ export const login = asyncHandler(async (req, res) => {
     );
 });
 
-
-// POST /api/auth/logout
-
 export const logout = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
@@ -134,9 +127,6 @@ export const logout = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken", COOKIE_OPTIONS)
     .json(new apiResponse(200, {}, "Logged out successfully"));
 });
-
-
-// POST /api/auth/refresh-token
 
 export const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
@@ -179,16 +169,11 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     );
 });
 
-
-// GET /api/auth/me
-
 export const getMe = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new apiResponse(200, req.user, "Current user fetched successfully"));
 });
-
-
 
 export const changePassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;

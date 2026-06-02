@@ -1,86 +1,54 @@
-/**
- * 
- * remaining to understand 
- */
-import { asyncHandler } from '../utils/asyncHandler.js'
-import { ApiError } from '../utils/apiError.js'
-import apiResponse from '../utils/apiResponse.js'
+import Razorpay from 'razorpay'
 import crypto from 'crypto'
-import Booking from '../models/booking.model.js'
-import { sendBookingConfirmationEmail } from '../services/email.service.js'
+import { asyncHandler } from '../utils/asyncHandler.js'
+import apiError from '../utils/apiError.js'
+import apiResponse from '../utils/apiResponse.js'
+import { Booking } from '../models/booking.model.js'
+import { sendBookingConfirmationEmail } from '../utils/email.util.js'
 
-const getRazorpayInstance = () => {
-  const Razorpay = (await import('razorpay')).default
-  return new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  })
-}
-
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+})
 
 export const initiatePayment = asyncHandler(async (req, res) => {
   const { pnr } = req.body
 
   if (!pnr) {
-    throw new ApiError(400, 'PNR is required')
+    throw new apiError(400, 'PNR is required')
   }
 
   const booking = await Booking.findOne({ pnr })
   if (!booking) {
-    throw new ApiError(404, 'Booking not found for this PNR')
+    throw new apiError(404, 'Booking not found')
   }
 
- 
   if (booking.user.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'You are not authorized to pay for this booking')
+    throw new apiError(403, 'Not authorized')
   }
 
   if (booking.paymentStatus !== 'pending') {
-    throw new ApiError(
-      400,
-      `Payment cannot be initiated. Current status: '${booking.paymentStatus}'`
-    )
+    throw new apiError(400, `Payment status is already: ${booking.paymentStatus}`)
   }
 
   if (booking.bookingStatus === 'cancelled') {
-    throw new ApiError(400, 'Cannot initiate payment for a cancelled booking')
+    throw new apiError(400, 'Cannot pay for a cancelled booking')
   }
-
-  // Validate Razorpay credentials
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-    throw new ApiError(500, 'Payment gateway not configured')
-  }
-
-  let Razorpay;
-  try {
-    Razorpay = (await import('razorpay')).default
-  } catch {
-    throw new ApiError(500, 'Payment gateway module not available')
-  }
-
-  const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  })
 
   const amountInPaise = Math.round(booking.fare.totalFare * 100)
 
-  let order
+  let order;
   try {
     order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
       receipt: pnr,
-      notes: {
-        pnr,
-        userId: req.user._id.toString(),
-      },
     })
   } catch (err) {
-    throw new ApiError(502, `Razorpay order creation failed: ${err.message}`)
+    throw new apiError(502, `Razorpay error: ${err.message}`)
   }
 
-  booking.razorpayOrderId = order.id
+  booking.razorpayOrderId = order.id;
   await booking.save({ validateBeforeSave: false })
 
   return res.status(200).json(
@@ -92,26 +60,17 @@ export const initiatePayment = asyncHandler(async (req, res) => {
         currency: 'INR',
         key: process.env.RAZORPAY_KEY_ID,
         pnr,
-        bookingId: booking._id,
       },
-      'Payment initiated successfully'
+      'Payment initiated'
     )
   )
 })
 
 export const verifyPayment = asyncHandler(async (req, res) => {
-  const {
-    razorpay_order_id,
-    razorpay_payment_id,
-    razorpay_signature,
-    pnr,
-  } = req.body
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, pnr } = req.body
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !pnr) {
-    throw new ApiError(
-      400,
-      'razorpay_order_id, razorpay_payment_id, razorpay_signature, and pnr are required'
-    )
+    throw new apiError(400, 'All payment fields and pnr are required')
   }
 
   const expectedSignature = crypto
@@ -120,52 +79,49 @@ export const verifyPayment = asyncHandler(async (req, res) => {
     .digest('hex')
 
   if (expectedSignature !== razorpay_signature) {
-    throw new ApiError(400, 'Payment verification failed: invalid signature')
+    throw new apiError(400, 'Invalid payment signature')
   }
 
   const booking = await Booking.findOne({ pnr })
   if (!booking) {
-    throw new ApiError(404, 'Booking not found for this PNR')
+    throw new apiError(404, 'Booking not found')
   }
 
   if (booking.user.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'You are not authorized to verify this payment')
+    throw new apiError(403, 'Not authorized')
   }
 
   if (booking.razorpayOrderId !== razorpay_order_id) {
-    throw new ApiError(400, 'Order ID mismatch')
+    throw new apiError(400, 'Order ID mismatch')
   }
 
   booking.paymentStatus = 'paid'
   booking.razorpayPaymentId = razorpay_payment_id
-  booking.razorpaySignature = razorpay_signature
   booking.paidAt = new Date()
-
   await booking.save({ validateBeforeSave: false })
 
-  const populatedBooking = await Booking.findById(booking._id)
+  const populated = await Booking.findById(booking._id)
     .populate('train', 'trainName trainNumber')
     .populate('fromStation', 'stationCode stationName city')
     .populate('toStation', 'stationCode stationName city')
     .populate('user', 'name email')
 
   try {
-    await sendBookingConfirmationEmail(populatedBooking)
-  } catch (emailErr) {
-    console.error('Email sending failed:', emailErr.message)
+    await sendBookingConfirmationEmail(populated)
+  } catch (err) {
+    console.error('Confirmation email failed:', err.message)
   }
 
   return res.status(200).json(
     new apiResponse(
       200,
       {
-        success: true,
         pnr,
-        bookingStatus: booking.bookingStatus,
         paymentStatus: booking.paymentStatus,
+        bookingStatus: booking.bookingStatus,
         razorpayPaymentId: razorpay_payment_id,
       },
-      'Payment verified and booking confirmed successfully'
+      'Payment verified'
     )
   )
 })

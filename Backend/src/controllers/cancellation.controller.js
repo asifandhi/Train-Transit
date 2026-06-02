@@ -8,7 +8,6 @@ import { calculateRefund } from '../utils/refundCalc.util.js'
 import { promoteWaitlist } from '../utils/waitlistPromotion.util.js'
 import { sendCancellationEmail } from '../utils/email.util.js'
 
-// ── POST /api/cancellation/:PNR  (auth) ─────────────────
 export const cancelBooking = asyncHandler(async (req, res) => {
   const { PNR } = req.params
   const { reason } = req.body
