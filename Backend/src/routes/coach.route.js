@@ -9,11 +9,10 @@ import { authorizeRoles } from "../middlewares/roleGuard.middleware.js";
 
 const router = Router();
 
-// Public route
-router.get("/:trainId", getCoachesByTrain);
+router.route("/:trainId").get(getCoachesByTrain);
 
-// Admin-only routes
-router.post("/", verifyJWT, authorizeRoles("admin"), addCoach);
-router.delete("/:id", verifyJWT, authorizeRoles("admin"), deleteCoach);
+router.route("/").post(verifyJWT, authorizeRoles("admin"), addCoach);
+
+router.route("/:id").delete(verifyJWT, authorizeRoles("admin"), deleteCoach);
 
 export default router;
