@@ -1,6 +1,6 @@
-// testPdf.js — run with: node testPdf.js
-// Place this file at project root (same level as src/)
-// Output: ticket.pdf in same folder
+
+
+
 
 import { generateTicketPDF } from './src/utils/pdf.util.js';
 import fs from 'fs';

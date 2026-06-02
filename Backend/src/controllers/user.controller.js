@@ -1,10 +1,9 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { apiError } from "../utils/apiError.js";
+import apiError from "../utils/apiError.js";
 import apiResponse from "../utils/apiResponse.js";
 import { User } from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { COOKIE_OPTIONS } from "../constant.js";
-import { uploadSingle } from "../middlewares/upload.middleware.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
 const generateTokens = async (userId) => {
@@ -192,7 +191,7 @@ export const changePassword = asyncHandler(async (req, res) => {
   if (!isOldPasswordValid) throw new apiError(401, "Old password is incorrect");
 
   user.password = newPassword;
-  await user.save(); // pre-save hook hashes it
+  await user.save();
 
   return res
     .status(200)

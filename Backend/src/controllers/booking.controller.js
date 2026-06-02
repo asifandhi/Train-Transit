@@ -12,7 +12,6 @@ import { generateUniquePNR } from "../utils/pnrGenerator.util.js";
 const assignPassengerStatus = (snap, coachClass) => {
   const confirmedLeft = snap.availableSeats[coachClass] || 0;
 
-  // STEP 1 — confirmed seat available
   if (confirmedLeft > 0) {
     snap.availableSeats[coachClass] = confirmedLeft - 1;
     return { status: "confirmed", racNumber: null, waitlistNumber: null };
@@ -32,8 +31,6 @@ const assignPassengerStatus = (snap, coachClass) => {
   const currentWL = snap.waitlistCount[coachClass] || 0;
   const maxWL = snap.maxWaitlist[coachClass] || 0;
 
-  // STEP 3 — waitlist slot available
-  // WL/1 = first in queue, will get RAC if someone cancels
   if (currentWL < maxWL) {
     snap.waitlistCount[coachClass] = currentWL + 1;
     const waitlistNumber = snap.waitlistCount[coachClass];
@@ -48,7 +45,6 @@ export const createBooking = asyncHandler(async (req, res) => {
   const { scheduleId, fromStationId, toStationId, coachClass, passengers } =
     req.body;
 
-  // Basic presence check — all 5 fields are mandatory
   if (
     !scheduleId ||
     !fromStationId ||
@@ -66,16 +62,13 @@ export const createBooking = asyncHandler(async (req, res) => {
     throw new apiError(400, "passengers must be a non-empty array");
   }
 
-  // IRCTC rule: max 6 passengers per PNR
   if (passengers.length > 6) {
     throw new apiError(400, "Maximum 6 passengers allowed per booking");
   }
 
-  // ── SCHEDULE VALIDATION ────────────────────────────────────────────────────
   const schedule = await Schedule.findById(scheduleId);
   if (!schedule) throw new apiError(404, "Schedule not found");
 
-  // Only allow booking on scheduled trains — not cancelled/completed ones
   if (schedule.status !== "scheduled") {
     throw new apiError(
       400,
@@ -157,7 +150,7 @@ export const createBooking = asyncHandler(async (req, res) => {
       isSuperfast: train.isSuperfast,
       discountType: p.discountType || null,
       discountPercent: p.discountPercent || 0,
-      mealCost: 0, // meal cost added later via POST /api/bookings/:PNR/meals
+      mealCost: 0,
     });
 
     passengerDetails.push({
@@ -216,7 +209,9 @@ export const createBooking = asyncHandler(async (req, res) => {
       discountAmount: totalDiscount,
       totalFare,
     },
-    bookingStatus: "confirmed", 
+    bookingStatus: passengerDetails.every((p) => p.status === "waitlist")
+      ? "waitlist"
+      : "confirmed",
     paymentStatus: "pending",
   });
 
@@ -240,7 +235,6 @@ export const createBooking = asyncHandler(async (req, res) => {
     }
   });
 
-  // Only hit DB if something actually changed
   if (Object.keys(scheduleUpdate).length > 0) {
     await Schedule.findByIdAndUpdate(scheduleId, { $set: scheduleUpdate });
   }
@@ -262,26 +256,22 @@ export const createBooking = asyncHandler(async (req, res) => {
 });
 
 export const getMyBookings = asyncHandler(async (req, res) => {
-  // Clamp page to minimum 1, limit between 1 and 50
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
   const skip = (page - 1) * limit;
 
-  // Always filter by current user — passenger can only see their own bookings
   const filter = { user: req.user._id };
 
-  // Optional status filter — e.g. GET /api/bookings/my?status=cancelled
   if (req.query.status) {
     filter.bookingStatus = req.query.status;
   }
 
-  // Run count and find in parallel — saves one round-trip
   const [bookings, total] = await Promise.all([
     Booking.find(filter)
       .populate("train", "trainName trainNumber trainType isSuperfast")
       .populate("fromStation", "stationCode stationName city")
       .populate("toStation", "stationCode stationName city")
-      .sort({ createdAt: -1 }) // newest first
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit),
     Booking.countDocuments(filter),
@@ -303,7 +293,6 @@ export const getMyBookings = asyncHandler(async (req, res) => {
     )
   );
 });
-
 
 export const getBookingByPNR = asyncHandler(async (req, res) => {
   const { PNR } = req.params;

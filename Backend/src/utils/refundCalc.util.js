@@ -5,10 +5,10 @@ export function calculateRefund({ totalFare, departureDateTime }) {
   let departureMs;
 
   if (departureDateTime instanceof Date) {
-    // If it's a calendar-style object, turn it into a number
+    
     departureMs = departureDateTime.getTime();
   } else {
-    // If it's already a number, just use it
+    
     departureMs = departureDateTime;
   }
 

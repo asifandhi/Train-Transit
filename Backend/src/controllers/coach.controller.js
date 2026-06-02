@@ -14,7 +14,7 @@ const getBerthType = (i, coachClass) => {
     return ['lower','upper','lower','upper','sideUpper','sideLower'][i % 6]
   if (coachClass === '1A')
     return ['lower','upper','lower','upper'][i % 4]
-  return 'seat' // CC, EC, GN
+  return 'seat' 
 }
 
 export const addCoach = asyncHandler(async (req, res) => {

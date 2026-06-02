@@ -1,17 +1,17 @@
 import PDFDocument from "pdfkit";
 import { Buffer } from "buffer";
 
-// At top of file — add path import
+
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import path from "path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ── Brand / Gov palette ───────────────────────────────────────────────────────
+
 const C_SAFFRON = "#FF9933";
 const C_GREEN = "#138808";
-const C_NAVY = "#000080"; // Indian Railways navy
+const C_NAVY = "#000080"; 
 const C_DARK = "#1a2035";
 const C_BRAND = "#1a56db";
 const C_WHITE = "#ffffff";
@@ -20,7 +20,7 @@ const C_MUTED = "#6b7280";
 const C_BORDER = "#c8d4f0";
 const C_ROW_ALT = "#eef2fc";
 
-// Famous Indian station codes used as watermark tiles
+
 const STATION_CODES = [
   "NDLS",
   "BCT",
@@ -54,7 +54,7 @@ const STATION_CODES = [
   "GWL",
 ];
 
-// ── Low-level helpers ─────────────────────────────────────────────────────────
+
 
 function rect(doc, x, y, w, h, color) {
   doc.rect(x, y, w, h).fill(color);
@@ -89,9 +89,9 @@ function labelValue(doc, label, value, lx, vx, y, valueColor = C_DARK) {
     .text(value, vx, y);
 }
 
-// ── Watermark: tile ghost station codes across full page ──────────────────────
-// Edit STATION_CODES array above to change which codes appear.
-// Change fillColor hex to make darker (e.g. '#d0d8f0') or lighter (e.g. '#eceff8').
+
+
+
 function drawWatermark(doc, pageWidth, pageHeight) {
   doc.save();
   doc.font("Helvetica-Bold").fontSize(22).fillColor("#dde3f5");
@@ -114,8 +114,8 @@ function drawWatermark(doc, pageWidth, pageHeight) {
   doc.restore();
 }
 
-// ── Tricolor stripe ───────────────────────────────────────────────────────────
-// Change stripe height by editing the `H` constant (currently 5px each).
+
+
 function drawTricolor(doc, pageWidth, yStart = 0) {
   const H = 5;
   rect(doc, 0, yStart, pageWidth, H, C_SAFFRON);
@@ -123,14 +123,14 @@ function drawTricolor(doc, pageWidth, yStart = 0) {
   rect(doc, 0, yStart + H * 2, pageWidth, H, C_GREEN);
 }
 
-// ── Ashoka Chakra (simplified 24-spoke wheel) ─────────────────────────────────
-// cx, cy = centre. r = radius. Change r to resize.
+
+
 function drawChakra(doc, cx, cy, r = 14) {
-  // Outer circle
+  
   doc.circle(cx, cy, r).strokeColor("#000080").lineWidth(1.5).stroke();
-  // Inner hub
+  
   doc.circle(cx, cy, r * 0.15).fill("#000080");
-  // 24 spokes
+  
   for (let i = 0; i < 24; i++) {
     const angle = (i * 2 * Math.PI) / 24;
     const x1 = cx + Math.cos(angle) * r * 0.18;
@@ -146,11 +146,11 @@ function drawChakra(doc, cx, cy, r = 14) {
   }
 }
 
-// ── Decorative barcode strip (purely visual) ──────────────────────────────────
-// Alternating thin/thick black bars — looks like a barcode, not scannable.
-// Change barCount for more/fewer bars.
+
+
+
 function drawBarcodeStrip(doc, x, y, w, h, barCount = 60) {
-  const thicknesses = [1, 2, 1, 3, 1, 1, 2, 3]; // pattern loop
+  const thicknesses = [1, 2, 1, 3, 1, 1, 2, 3]; 
   let cx = x;
   for (let i = 0; i < barCount && cx < x + w; i++) {
     const bw = thicknesses[i % thicknesses.length];
@@ -159,8 +159,8 @@ function drawBarcodeStrip(doc, x, y, w, h, barCount = 60) {
   }
 }
 
-// ── STATUS STAMP (diagonal text: CONFIRMED / RAC / WAITLIST) ─────────────────
-// Drawn inside PNR box. Change font size or angle below.
+
+
 function drawStatusStamp(doc, status, cx, cy) {
   const label =
     status === "confirmed"
@@ -177,10 +177,10 @@ function drawStatusStamp(doc, status, cx, cy) {
 
   doc.save();
   doc.translate(cx, cy);
-  doc.rotate(-28); // ← change angle here
+  doc.rotate(-28); 
   doc
     .font("Helvetica-Bold")
-    .fontSize(28) // ← change size here
+    .fontSize(28) 
     .fillColor(color)
     .opacity(0.12)
     .text(label, -60, -14, { lineBreak: false });
@@ -188,7 +188,7 @@ function drawStatusStamp(doc, status, cx, cy) {
   doc.opacity(1);
 }
 
-// ── MAIN EXPORT ───────────────────────────────────────────────────────────────
+
 export async function generateTicketPDF(bookingData) {
   const {
     pnr,
@@ -201,7 +201,7 @@ export async function generateTicketPDF(bookingData) {
     passengers = [],
     fare = {},
     bookedAt,
-    bookingStatus = "confirmed", // overall booking status for stamp
+    bookingStatus = "confirmed", 
   } = bookingData;
 
   return new Promise((resolve, reject) => {
@@ -220,29 +220,29 @@ export async function generateTicketPDF(bookingData) {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const PW = doc.page.width; // 595.28
-    const PH = doc.page.height; // 841.89
-    const CW = PW - 80; // content width (40px margin each side)
-    const MX = 40; // left margin
+    const PW = doc.page.width; 
+    const PH = doc.page.height; 
+    const CW = PW - 80; 
+    const MX = 40; 
 
-    // ── LAYER 0: White background ─────────────────────────────────────────────
+    
     rect(doc, 0, 0, PW, PH, C_WHITE);
 
-    // ── LAYER 1: Watermark ghost station codes ────────────────────────────────
-    // drawWatermark(doc, PW, PH);
-    // ── LAYER 1: Background image watermark ──────────────────────────────────────
+    
+    
+    
     const bgImagePath = path.join(__dirname, "../assets/ticket_bg.png");
     doc.image(bgImagePath, 0, 0, {
       width: PW,
       height: PH,
-      opacity: 0.15, // ← change this: 0.05 = barely visible, 0.3 = stronger
+      opacity: 0.15, 
     });
 
-    // ── LAYER 2: Top tricolor stripe ──────────────────────────────────────────
+    
     drawTricolor(doc, PW, 0);
 
-    // ── GOV HEADER (y: 15 → 72) ───────────────────────────────────────────────
-    // Left side: Chakra + Ministry text
+    
+    
     drawChakra(doc, MX + 18, 38);
 
     doc
@@ -261,7 +261,7 @@ export async function generateTicketPDF(bookingData) {
       .fillColor(C_MUTED)
       .text("GOVERNMENT OF INDIA", MX + 38, 49);
 
-    // Right side: TrainTransit branding
+    
     doc
       .font("Helvetica-Bold")
       .fontSize(14)
@@ -276,10 +276,10 @@ export async function generateTicketPDF(bookingData) {
         width: PW - MX,
       });
 
-    // Separator under gov header
+    
     hrule(doc, 62, C_NAVY, 1.5);
 
-    // ── META LINE (booked timestamp + CRN) ────────────────────────────────────
+    
     const bookedStr = new Date(bookedAt).toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
     });
@@ -290,9 +290,9 @@ export async function generateTicketPDF(bookingData) {
       .text(`Booked: ${bookedStr} IST`, MX, 66)
       .text(`CRN: TT-${pnr}`, 0, 66, { align: "right", width: PW - MX });
 
-    // ── PNR BOX (y: 78 → 130) ────────────────────────────────────────────────
+    
     let y = 78;
-    // Dashed border box
+    
     doc
       .rect(MX, y, CW, 50)
       .dash(5, { space: 3 })
@@ -301,10 +301,10 @@ export async function generateTicketPDF(bookingData) {
       .stroke()
       .undash();
 
-    // Light fill
+    
     rect(doc, MX + 1, y + 1, CW - 2, 48, C_LIGHT_BG);
 
-    // Diagonal status stamp inside PNR box
+    
     drawStatusStamp(doc, bookingStatus, MX + CW - 80, y + 25);
 
     doc
@@ -323,7 +323,7 @@ export async function generateTicketPDF(bookingData) {
         characterSpacing: 5,
       });
 
-    // ── TRAIN DETAILS SECTION ─────────────────────────────────────────────────
+    
     y = 136;
     y = sectionHeader(doc, "TRAIN DETAILS", y, PW);
 
@@ -342,11 +342,11 @@ export async function generateTicketPDF(bookingData) {
         y + 14
       );
 
-    // FROM → TO with arrow
+    
     y += 34;
     const midX = PW / 2;
 
-    // From box
+    
     doc.rect(MX, y, 160, 38).fillAndStroke(C_LIGHT_BG, C_BORDER);
     doc
       .font("Helvetica-Bold")
@@ -359,7 +359,7 @@ export async function generateTicketPDF(bookingData) {
       .fillColor(C_MUTED)
       .text("DEPARTURE", MX + 6, y + 24);
 
-    // To box
+    
     doc.rect(PW - MX - 160, y, 160, 38).fillAndStroke(C_LIGHT_BG, C_BORDER);
     doc
       .font("Helvetica-Bold")
@@ -372,7 +372,7 @@ export async function generateTicketPDF(bookingData) {
       .fillColor(C_MUTED)
       .text("ARRIVAL", PW - MX - 154, y + 24);
 
-    // Arrow between boxes
+    
     const arrowY = y + 19;
     doc
       .moveTo(MX + 166, arrowY)
@@ -380,14 +380,14 @@ export async function generateTicketPDF(bookingData) {
       .strokeColor(C_BRAND)
       .lineWidth(2)
       .stroke();
-    // Arrowhead
+    
     doc
       .moveTo(PW - MX - 166, arrowY - 5)
       .lineTo(PW - MX - 154, arrowY)
       .lineTo(PW - MX - 166, arrowY + 5)
       .fill(C_BRAND);
 
-    // Journey date under route
+    
     y += 48;
     const dateStr = new Date(journeyDate).toLocaleDateString("en-IN", {
       weekday: "long",
@@ -405,11 +405,11 @@ export async function generateTicketPDF(bookingData) {
 
     hrule(doc, y + 14);
 
-    // ── PASSENGER DETAILS SECTION ─────────────────────────────────────────────
+    
     y += 22;
     y = sectionHeader(doc, "PASSENGER DETAILS", y, PW);
 
-    // Column layout — adjust x/width to reposition columns
+    
     const COLS = [
       { key: "name", label: "PASSENGER NAME", x: MX, w: 148 },
       { key: "age", label: "AGE", x: MX + 152, w: 30 },
@@ -420,7 +420,7 @@ export async function generateTicketPDF(bookingData) {
       { key: "status", label: "STATUS", x: MX + 417, w: 80 },
     ];
 
-    // Table header row
+    
     rect(doc, MX, y, CW, 16, "#dde6f5");
     COLS.forEach(({ label, x, w }) => {
       doc
@@ -431,7 +431,7 @@ export async function generateTicketPDF(bookingData) {
     });
     y += 18;
 
-    // Passenger rows
+    
     passengers.forEach((p, idx) => {
       const rowBg = idx % 2 === 0 ? C_WHITE : C_ROW_ALT;
       rect(doc, MX, y, CW, 18, rowBg);
@@ -473,7 +473,7 @@ export async function generateTicketPDF(bookingData) {
       y += 20;
     });
 
-    // Bottom border of table
+    
     doc
       .rect(
         MX,
@@ -487,7 +487,7 @@ export async function generateTicketPDF(bookingData) {
 
     hrule(doc, y + 4);
 
-    // ── FARE BREAKDOWN SECTION ────────────────────────────────────────────────
+    
     y += 16;
     y = sectionHeader(doc, "FARE DETAILS", y, PW);
 
@@ -517,7 +517,7 @@ export async function generateTicketPDF(bookingData) {
     hrule(doc, y);
     y += 6;
 
-    // Total row
+    
     rect(doc, MX, y, CW, 22, C_LIGHT_BG);
     doc
       .font("Helvetica-Bold")
@@ -536,7 +536,7 @@ export async function generateTicketPDF(bookingData) {
 
     hrule(doc, y);
 
-    // ── IMPORTANT INSTRUCTIONS ────────────────────────────────────────────────
+    
     y += 10;
     y = sectionHeader(doc, "IMPORTANT INSTRUCTIONS", y, PW);
 
@@ -553,7 +553,7 @@ export async function generateTicketPDF(bookingData) {
       y += 12;
     });
 
-    // ── BARCODE STRIP ─────────────────────────────────────────────────────────
+    
     y += 6;
     drawBarcodeStrip(doc, MX, y, CW, 22);
 
@@ -569,7 +569,7 @@ export async function generateTicketPDF(bookingData) {
         { align: "right", width: PW - MX }
       );
 
-    // ── FOOTER ────────────────────────────────────────────────────────────────
+    
     const footerY = PH - 46;
     hrule(doc, footerY, C_NAVY, 1);
 
@@ -594,7 +594,7 @@ export async function generateTicketPDF(bookingData) {
         { align: "center", width: CW }
       );
 
-    // Bottom tricolor stripe
+    
     drawTricolor(doc, PW, PH - 15);
 
     doc.end();

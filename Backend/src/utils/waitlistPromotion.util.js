@@ -4,18 +4,18 @@ import { Schedule } from "../models/schedule.model.js";
 export async function promoteWaitlist({ scheduleId, coachClass, cancelledPassengerCount }) {
   const schedule = await Schedule.findById(scheduleId);
   if (!schedule) {
-    // Nothing to promote if the schedule can't be found
+    
     return { promotedToConfirmed: 0, promotedToRAC: 0 };
   }
 
   let promotedToConfirmed = 0;
   let promotedToRAC = 0;
 
-  // Collect all modified bookings so we can bulk-save at the end
+  
   const bookingsToSave = [];
 
   for (let i = 0; i < cancelledPassengerCount; i++) {
-    // ── Step A: Promote first RAC booking → confirmed ─────────────────────────
+    
     const racBooking = await Booking.findOne({
       schedule: scheduleId,
       coachClass,
@@ -23,12 +23,12 @@ export async function promoteWaitlist({ scheduleId, coachClass, cancelledPasseng
     }).sort({ racNumber: 1 });
 
     if (racBooking) {
-      // Find a free confirmed seat from the schedule seat map (implementation depends on
-      // your Schedule model's seat tracking). We update the passenger record directly.
+      
+      
       const passenger = racBooking.passengers.find((p) => p.status === 'RAC');
       if (passenger) {
         passenger.status = 'confirmed';
-        // Assign the next available confirmed seat from the schedule
+        
         const seatInfo = allocateNextSeat(schedule, coachClass);
         if (seatInfo) {
           passenger.coachNumber = seatInfo.coachNumber;
@@ -41,10 +41,10 @@ export async function promoteWaitlist({ scheduleId, coachClass, cancelledPasseng
       racBooking.status = 'confirmed';
       racBooking.racNumber = undefined;
 
-      // Update schedule counters
+      
       if (schedule.availableRAC && schedule.availableRAC.get) {
         const currentRAC = schedule.availableRAC.get(coachClass) ?? 0;
-        schedule.availableRAC.set(coachClass, currentRAC + 1); // one RAC slot freed
+        schedule.availableRAC.set(coachClass, currentRAC + 1); 
       } else if (schedule.availableRAC) {
         schedule.availableRAC[coachClass] = (schedule.availableRAC[coachClass] ?? 0) + 1;
       }
@@ -52,7 +52,7 @@ export async function promoteWaitlist({ scheduleId, coachClass, cancelledPasseng
       bookingsToSave.push(racBooking);
       promotedToConfirmed += 1;
 
-      // ── Step B: Promote first waitlist booking → RAC ───────────────────────
+      
       const waitlistBooking = await Booking.findOne({
         schedule: scheduleId,
         coachClass,
@@ -62,7 +62,7 @@ export async function promoteWaitlist({ scheduleId, coachClass, cancelledPasseng
       if (waitlistBooking) {
         const wPassenger = waitlistBooking.passengers.find((p) => p.status === 'waitlist');
         if (wPassenger) {
-          // Assign the next available RAC number
+          
           const nextRACNumber = await getNextRACNumber(scheduleId, coachClass);
           wPassenger.status = 'RAC';
           wPassenger.racNumber = nextRACNumber;
@@ -73,7 +73,7 @@ export async function promoteWaitlist({ scheduleId, coachClass, cancelledPasseng
         waitlistBooking.racNumber = waitlistBooking.passengers.find((p) => p.status === 'RAC')?.racNumber;
         waitlistBooking.waitlistNumber = undefined;
 
-        // Update schedule waitlist counter
+        
         if (schedule.waitlistCount && schedule.waitlistCount.get) {
           const currentWL = schedule.waitlistCount.get(coachClass) ?? 0;
           schedule.waitlistCount.set(coachClass, Math.max(0, currentWL - 1));
@@ -90,7 +90,7 @@ export async function promoteWaitlist({ scheduleId, coachClass, cancelledPasseng
     }
   }
 
-  // ── Persist all changes ───────────────────────────────────────────────────
+  
   await Promise.all([
     schedule.save(),
     ...bookingsToSave.map((b) => b.save()),
@@ -113,7 +113,7 @@ async function getNextRACNumber(scheduleId, coachClass) {
 }
 
 function allocateNextSeat(schedule, coachClass) {
-  // Try to pull from schedule.coaches if the field exists
+  
   if (!schedule.coaches) return null;
 
   const coaches = schedule.coaches.filter((c) => c.coachClass === coachClass);
@@ -121,7 +121,7 @@ function allocateNextSeat(schedule, coachClass) {
     if (!coach.seats) continue;
     const freeSeat = coach.seats.find((s) => s.status === 'available');
     if (freeSeat) {
-      freeSeat.status = 'booked'; // mark as taken in memory (schedule.save() persists this)
+      freeSeat.status = 'booked'; 
       return {
         coachNumber: coach.coachNumber,
         seatNumber: freeSeat.seatNumber,

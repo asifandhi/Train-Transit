@@ -106,7 +106,6 @@ export const searchTrains = asyncHandler(async (req, res) => {
         )
       );
 
-  // Schedule lookup for journey date
   const dayStart = new Date(journeyDate);
   dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(journeyDate);
@@ -122,7 +121,6 @@ export const searchTrains = asyncHandler(async (req, res) => {
   const schedules = await Schedule.find(scheduleFilter).lean();
   const scheduleMap = new Map(schedules.map((s) => [s.train.toString(), s]));
 
-  // Build results
   const results = [];
   for (const { route, fromStop, toStop, distanceKm } of validRoutes) {
     const schedule = scheduleMap.get(route.train._id.toString());

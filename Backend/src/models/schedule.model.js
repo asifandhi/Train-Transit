@@ -24,18 +24,18 @@ const scheduleSchema = new Schema(
       type: Date,
       required: [true, 'Arrival datetime is required'],
     },
-    // Map of coach class → available confirmed seat count
-    // e.g. { SL: 320, '3A': 64, '2A': 46 }
+    
+    
     availableSeats: {
       type: Schema.Types.Mixed,
       default: {},
     },
-    // Map of coach class → available RAC berth count
+    
     availableRAC: {
       type: Schema.Types.Mixed,
       default: {},
     },
-    // Map of coach class → current waitlist position count
+    
     waitlistCount: {
       type: Schema.Types.Mixed,
       default: {},
@@ -53,7 +53,7 @@ const scheduleSchema = new Schema(
   { timestamps: true }
 );
 
-// Compound index to efficiently query schedules by train and date
+
 scheduleSchema.index({ train: 1, journeyDate: 1 });
 
 export const Schedule =  mongoose.model('Schedule', scheduleSchema);

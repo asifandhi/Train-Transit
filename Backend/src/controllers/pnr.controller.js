@@ -18,7 +18,6 @@ export const checkPNRStatus = asyncHandler(async (req, res) => {
 
   if (!booking) throw new apiError(404, 'PNR not found')
 
-  // Public view: safe passenger info only (no ID/phone)
   const passengers = (booking.passengers || []).map((p) => ({
     name:           p.name,
     status:         p.status,

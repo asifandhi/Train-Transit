@@ -69,18 +69,18 @@ const userSchema = new Schema(
     },
     passwordResetToken: {
       type: String,
-      //  hashed token sent to email for forgot-password flow
+      
     },
     passwordResetExpiry: {
       type: Date,
-      // WHY: token expires in 15 min — prevent misuse of reset link
+      
     },
   },
   { timestamps: true }
 );
 
 
-// might occuring the error 
+
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);

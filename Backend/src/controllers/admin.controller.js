@@ -76,7 +76,6 @@ export const processRefund = asyncHandler(async (req, res) => {
   const { id } = req.params
   const { refundRazorpayId } = req.body
 
-  // Only update fields that exist in cancellation.model.js
   const updateData = { refundStatus: 'processed' }
   if (refundRazorpayId) updateData.refundRazorpayId = refundRazorpayId
 

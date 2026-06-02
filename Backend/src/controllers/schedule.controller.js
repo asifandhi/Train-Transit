@@ -52,7 +52,6 @@ export const generateSchedules = asyncHandler(async (req, res) => {
   const coaches = await Coach.find({ train: trainId, isActive: true })
   if (!coaches.length) throw new apiError(404, 'No active coaches found for this train')
 
-  // Aggregate seat/RAC counts per class
   const seatsPerClass = {}
   const racPerClass   = {}
 

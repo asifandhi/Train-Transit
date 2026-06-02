@@ -33,7 +33,7 @@ const seatSchema = new Schema(
     },
     racPosition: {
       type: Number,
-      default: null, // 1 or 2 indicating which RAC slot on the shared berth
+      default: null, 
     },
   },
   { timestamps: true }

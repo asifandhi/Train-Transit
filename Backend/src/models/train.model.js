@@ -47,12 +47,12 @@ const trainSchema = new Schema(
     originStation: {
       type: Schema.Types.ObjectId,
       ref: 'Station',
-      // WHY: quick display on search results ("NDLS → BCT") without loading full route
+      
     },
     destinationStation: {
       type: Schema.Types.ObjectId,
       ref: 'Station',
-      // WHY: same — show start/end on train card in frontend
+      
     },
   },
   { timestamps: true }
