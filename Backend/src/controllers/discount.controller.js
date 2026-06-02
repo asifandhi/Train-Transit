@@ -3,7 +3,7 @@ import apiError from '../utils/apiError.js'
 import apiResponse from '../utils/apiResponse.js'
 import Discount from '../models/discount.model.js'
 import { validateDiscount } from '../utils/discountValidator.util.js'
-import { uploadOnCloudinary } from '../utils/cloudinary.util.js'
+import { uploadOnCloudinary } from '../utils/cloudinary.js'
 import { DISCOUNT_RULES } from '../constant.js'
 
 export const validateAndApplyDiscount = asyncHandler(async (req, res) => {

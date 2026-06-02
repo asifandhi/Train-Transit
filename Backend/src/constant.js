@@ -1,4 +1,4 @@
-export const DB_NAME = "Train Transit";
+export const DB_NAME = "TrainTransit";
 
 export const ROLES = Object.freeze({
   PASSENGER: "passenger",
