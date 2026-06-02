@@ -8,7 +8,9 @@ import { Train } from "../models/train.model.js";
 import { Route } from "../models/route.model.js";
 import { calculateFare } from "../utils/fareCalc.util.js";
 import { generateUniquePNR } from "../utils/pnrGenerator.util.js";
+import { assignSeat } from "../utils/seatAssigner.util.js"; // ← seat assignment
 
+// ── Internal helper: figure out passenger status (confirmed / RAC / waitlist)
 const assignPassengerStatus = (snap, coachClass) => {
   const confirmedLeft = snap.availableSeats[coachClass] || 0;
 
@@ -29,7 +31,7 @@ const assignPassengerStatus = (snap, coachClass) => {
   }
 
   const currentWL = snap.waitlistCount[coachClass] || 0;
-  const maxWL = snap.maxWaitlist[coachClass] || 0;
+  const maxWL     = snap.maxWaitlist[coachClass] || 0;
 
   if (currentWL < maxWL) {
     snap.waitlistCount[coachClass] = currentWL + 1;
@@ -41,6 +43,10 @@ const assignPassengerStatus = (snap, coachClass) => {
   return null;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/v1/bookings
+// Body: { scheduleId, fromStationId, toStationId, coachClass, passengers[] }
+// ─────────────────────────────────────────────────────────────────────────────
 export const createBooking = asyncHandler(async (req, res) => {
   const { scheduleId, fromStationId, toStationId, coachClass, passengers } =
     req.body;
@@ -115,15 +121,20 @@ export const createBooking = asyncHandler(async (req, res) => {
   const train = await Train.findById(schedule.train);
   if (!train) throw new apiError(404, "Train not found");
 
+  // Snapshot of seat availability (so we modify without touching DB yet)
   const snap = {
     availableSeats: { ...schedule.availableSeats.toObject() },
-    availableRAC: { ...schedule.availableRAC.toObject() },
-    waitlistCount: { ...schedule.waitlistCount.toObject() },
-    maxWaitlist: { ...schedule.maxWaitlist.toObject() },
-    _racCounter: {},
+    availableRAC:   { ...schedule.availableRAC.toObject() },
+    waitlistCount:  { ...schedule.waitlistCount.toObject() },
+    maxWaitlist:    { ...schedule.maxWaitlist.toObject() },
+    _racCounter:    {},
   };
 
   const passengerDetails = [];
+
+  // Track which seat IDs we've already assigned in this booking
+  // (prevents two passengers from getting the same seat)
+  const usedSeatIds = new Set();
 
   for (let i = 0; i < passengers.length; i++) {
     const p = passengers[i];
@@ -147,28 +158,43 @@ export const createBooking = asyncHandler(async (req, res) => {
     const fare = calculateFare({
       distanceKm,
       coachClass,
-      isSuperfast: train.isSuperfast,
-      discountType: p.discountType || null,
+      isSuperfast:     train.isSuperfast,
+      discountType:    p.discountType || null,
       discountPercent: p.discountPercent || 0,
-      mealCost: 0,
+      mealCost:        0,
     });
 
+    // ── Seat Assignment ──────────────────────────────────
+    // Only confirmed passengers get an actual seat.
+    // RAC and waitlist passengers get null (as before).
+    let seatNumber  = null;
+    let coachNumber = null;
+
+    if (assignment.status === "confirmed") {
+      const seatResult = await assignSeat(schedule.train, coachClass, usedSeatIds);
+      if (seatResult) {
+        seatNumber  = seatResult.seatNumber;
+        coachNumber = seatResult.coachNumber;
+      }
+    }
+    // ────────────────────────────────────────────────────
+
     passengerDetails.push({
-      name: p.name.trim(),
-      age: parseInt(p.age),
-      gender: p.gender,
-      idType: p.idType || null,
-      idNumber: p.idNumber || null,
-      berth: p.berth || null,
-      discountType: p.discountType || null,
+      name:            p.name.trim(),
+      age:             parseInt(p.age),
+      gender:          p.gender,
+      idType:          p.idType || null,
+      idNumber:        p.idNumber || null,
+      berth:           p.berth || null,
+      discountType:    p.discountType || null,
       discountPercent: p.discountPercent || 0,
-      proofUrl: p.proofUrl || null,
-      status: assignment.status,
-      racNumber: assignment.racNumber,
-      waitlistNumber: assignment.waitlistNumber,
-      seatNumber: null,
-      coachNumber: null,
-      meals: [],
+      proofUrl:        p.proofUrl || null,
+      status:          assignment.status,
+      racNumber:       assignment.racNumber,
+      waitlistNumber:  assignment.waitlistNumber,
+      seatNumber,    // ← real seat now (or null for RAC/waitlist)
+      coachNumber,   // ← real coach now (or null for RAC/waitlist)
+      meals:           [],
       fare,
     });
   }
@@ -190,22 +216,23 @@ export const createBooking = asyncHandler(async (req, res) => {
     (sum, p) => sum + p.fare.totalFare,
     0
   );
+
   const pnr = await generateUniquePNR();
 
   const booking = await Booking.create({
     pnr,
-    user: req.user._id,
-    train: schedule.train,
-    schedule: scheduleId,
-    fromStation: fromStationId,
-    toStation: toStationId,
-    journeyDate: schedule.journeyDate,
+    user:         req.user._id,
+    train:        schedule.train,
+    schedule:     scheduleId,
+    fromStation:  fromStationId,
+    toStation:    toStationId,
+    journeyDate:  schedule.journeyDate,
     coachClass,
-    passengers: passengerDetails,
+    passengers:   passengerDetails,
     fare: {
-      baseFare: totalBaseFare,
-      gst: totalGST,
-      mealCost: totalMealCost,
+      baseFare:       totalBaseFare,
+      gst:            totalGST,
+      mealCost:       totalMealCost,
       discountAmount: totalDiscount,
       totalFare,
     },
@@ -215,6 +242,7 @@ export const createBooking = asyncHandler(async (req, res) => {
     paymentStatus: "pending",
   });
 
+  // Update the schedule's seat counts in DB
   const scheduleUpdate = {};
 
   Object.keys(snap.availableSeats).forEach((cls) => {
@@ -255,10 +283,14 @@ export const createBooking = asyncHandler(async (req, res) => {
     );
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/bookings  (protected)
+// Query: ?page=1&limit=10&status=confirmed
+// ─────────────────────────────────────────────────────────────────────────────
 export const getMyBookings = asyncHandler(async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const page  = Math.max(1, parseInt(req.query.page) || 1);
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
-  const skip = (page - 1) * limit;
+  const skip  = (page - 1) * limit;
 
   const filter = { user: req.user._id };
 
@@ -294,6 +326,9 @@ export const getMyBookings = asyncHandler(async (req, res) => {
   );
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/bookings/:PNR  (protected)
+// ─────────────────────────────────────────────────────────────────────────────
 export const getBookingByPNR = asyncHandler(async (req, res) => {
   const { PNR } = req.params;
 

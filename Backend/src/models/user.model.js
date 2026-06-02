@@ -5,10 +5,10 @@ import bcrypt from "bcrypt";
 
 const savedPassengerSchema = new Schema(
   {
-    name:     { type: String, required: true, trim: true },
-    age:      { type: Number, required: true },
-    gender:   { type: String, enum: ["male", "female", "other"], required: true },
-    idType:   { type: String, enum: ["aadhar", "passport", "driving_license"] },
+    name: { type: String, required: true, trim: true },
+    age: { type: Number, required: true },
+    gender: { type: String, enum: ["male", "female", "other"], required: true },
+    idType: { type: String, enum: ["aadhar", "passport", "driving_license"] },
     idNumber: { type: String, trim: true },
   },
   { _id: true }
@@ -67,24 +67,30 @@ const userSchema = new Schema(
       type: [savedPassengerSchema],
       default: [],
     },
+
     passwordResetToken: {
       type: String,
-      
     },
     passwordResetExpiry: {
       type: Date,
-      
+    },
+    otpToken: {
+      type: String,
+    },
+    otpExpiry: {
+      type: Date,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
 );
 
-
-
-userSchema.pre('save', async function () {
-  if (!this.isModified('password')) return;
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
   this.password = await bcrypt.hash(this.password, 10);
-   
 });
 
 userSchema.methods.isPasswordCorrect = async function (password) {
@@ -118,4 +124,4 @@ userSchema.methods.generateRefreshToken = function () {
   );
 };
 
-export const User = mongoose.model("User",userSchema);
+export const User = mongoose.model("User", userSchema);

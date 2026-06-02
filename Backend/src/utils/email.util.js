@@ -211,3 +211,38 @@ export async function sendOTPEmail({ to, otp }) {
 
   return info;
 }
+
+export async function sendPasswordResetEmail({ to, userName, resetLink }) {
+  const bodyHtml = `
+    <h2 style="color:${BRAND_DARK};margin:0 0 4px;">Reset Your Password 🔑</h2>
+    <p style="color:#4a5568;margin:0 0 24px;font-size:15px;">
+      Hi <strong>${userName}</strong>, we received a request to reset your TrainTransit password.
+      Click the button below — this link is valid for <strong>15 minutes</strong>.
+    </p>
+
+    <div style="text-align:center;margin-bottom:28px;">
+      <a href="${resetLink}"
+         style="background:${BRAND_PRIMARY};color:#ffffff;padding:14px 32px;
+                border-radius:6px;text-decoration:none;font-size:16px;
+                font-weight:600;display:inline-block;">
+        Reset Password
+      </a>
+    </div>
+
+    <p style="font-size:13px;color:#6b7280;margin:0 0 6px;">
+      ⚠️ If you did not request this, please ignore this email. Your password will not change.
+    </p>
+    <p style="font-size:13px;color:#6b7280;margin:0;">
+      For security, this link expires in 15 minutes.
+    </p>
+  `;
+
+  const info = await transporter.sendMail({
+    from: `"TrainTransit" <${process.env.EMAIL_USER}>`,
+    to,
+    subject: "Reset Your TrainTransit Password",
+    html: emailShell("Password Reset – TrainTransit", bodyHtml),
+  });
+
+  return info;
+}
