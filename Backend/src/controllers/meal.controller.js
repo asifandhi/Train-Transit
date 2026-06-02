@@ -95,7 +95,7 @@ export const addMealToBooking = asyncHandler(async (req, res) => {
     throw new apiError(400, "Cannot add meals after journey date");
   }
 
-  // Find meal
+  
   const meal = await Meal.findById(mealId);
   if (!meal) {
     throw new apiError(404, "Meal not found");
@@ -121,7 +121,7 @@ export const addMealToBooking = asyncHandler(async (req, res) => {
     });
   }
 
-  // Recalculate meal cost
+  
   const mealCostAddition = meal.price * qty;
   booking.fare.mealCost = (booking.fare.mealCost || 0) + mealCostAddition;
   booking.fare.totalFare = booking.fare.totalFare + mealCostAddition;

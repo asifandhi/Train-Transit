@@ -21,20 +21,20 @@ import { upload } from "../middlewares/upload.middleware.js";
 
 const router = Router();
 
-// ── OTP (Step 1 & 2 before register) ────────────────────
+
 router.route("/send-otp").post(sendOtp);
 router.route("/verify-otp").post(verifyOtp);
 
-// ── Registration & Login ─────────────────────────────────
+
 router.route("/register").post(upload.single("avatar"), register);
 router.route("/login").post(login);
 router.route("/refresh-token").get(refreshAccessToken);
 
-// ── Forgot / Reset Password ──────────────────────────────
+
 router.route("/forgot-password").post(forgotPassword);
 router.route("/reset-password").post(resetPassword);
 
-// ── Protected routes (require JWT) ──────────────────────
+
 router.route("/logout").get(verifyJWT, logout);
 router.route("/me").get(verifyJWT, getMe);
 router.route("/change-password").post(verifyJWT, changePassword);

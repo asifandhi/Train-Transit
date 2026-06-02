@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 import { COOKIE_OPTIONS } from "../constant.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
-// ── Internal helper: generate + save both tokens ────────
+
 const generateTokens = async (userId) => {
   const user = await User.findById(userId);
   if (!user) throw new apiError(500, "User not found during token generation");
@@ -20,13 +20,13 @@ const generateTokens = async (userId) => {
   return { accessToken, refreshToken };
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/v1/auth/register
-// Body: { name, email, password, phone, gender, dob } + avatar file (multipart)
-//
-// IMPORTANT: User must call /send-otp and /verify-otp BEFORE hitting this.
-//            If isVerified is false, registration is blocked.
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
+
 export const register = asyncHandler(async (req, res) => {
   try {
     const { name, email, password, phone, gender, dob } = req.body;
@@ -38,12 +38,12 @@ export const register = asyncHandler(async (req, res) => {
       );
     }
 
-    // Find the placeholder user created during OTP flow
+    
     const existingUser = await User.findOne({
       email: email.toLowerCase().trim(),
     });
 
-    // Block if user never requested OTP (no placeholder exists)
+    
     if (!existingUser) {
       throw new apiError(
         403,
@@ -51,7 +51,7 @@ export const register = asyncHandler(async (req, res) => {
       );
     }
 
-    // Block if OTP was never verified
+    
     if (!existingUser.isVerified) {
       throw new apiError(
         403,
@@ -59,12 +59,12 @@ export const register = asyncHandler(async (req, res) => {
       );
     }
 
-    // Block if a fully registered user already exists (name is not "pending")
+    
     if (existingUser.isVerified && existingUser.name !== "pending") {
       throw new apiError(409, "User already exists with this email");
     }
 
-    // Handle avatar upload
+    
     const avatarUrl = req.file?.path;
     if (!avatarUrl) {
       throw new apiError(400, "Avatar file is required");
@@ -75,10 +75,10 @@ export const register = asyncHandler(async (req, res) => {
       throw new apiError(400, "Avatar upload to Cloudinary failed");
     }
 
-    // Fill in the placeholder with real data
+    
     existingUser.name     = name.trim();
     existingUser.email    = email.toLowerCase().trim();
-    existingUser.password = password;           // pre-save hook hashes this
+    existingUser.password = password;           
     existingUser.phone    = phone.trim();
     existingUser.gender   = gender;
     existingUser.dob      = new Date(dob);
@@ -97,17 +97,17 @@ export const register = asyncHandler(async (req, res) => {
       .status(201)
       .json(new apiResponse(201, createdUser, "User registered successfully"));
   } catch (error) {
-    // Re-throw apiErrors so the global handler picks them up correctly
+    
     if (error.statusCode) throw error;
     console.log(":::: Something went wrong in Register ::::", error);
     throw new apiError(500, error.message || "Registration failed");
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/v1/auth/login
-// Body: { email, password }
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -121,7 +121,7 @@ export const login = asyncHandler(async (req, res) => {
   if (!user.isActive)
     throw new apiError(403, "Account deactivated. Contact support.");
 
-  // Block login for placeholder (unverified) accounts
+  
   if (!user.isVerified) {
     throw new apiError(403, "Please verify your email with OTP before logging in.");
   }
@@ -148,9 +148,9 @@ export const login = asyncHandler(async (req, res) => {
     );
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/auth/logout  (protected)
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 export const logout = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
@@ -165,9 +165,9 @@ export const logout = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, {}, "Logged out successfully"));
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/auth/refresh-token
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 export const refreshAccessToken = asyncHandler(async (req, res) => {
   const incomingRefreshToken =
     req.cookies?.refreshToken || req.body?.refreshToken;
@@ -209,19 +209,19 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     );
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/v1/auth/me  (protected)
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
 export const getMe = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new apiResponse(200, req.user, "Current user fetched successfully"));
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/v1/auth/change-password  (protected)
-// Body: { oldPassword, newPassword }
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
 export const changePassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
@@ -246,16 +246,16 @@ export const changePassword = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, {}, "Password changed successfully"));
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PATCH /api/v1/auth/update-profile  (protected)
-// Body: { name?, phone?, gender?, dob? } + optional avatar file (multipart)
-//
-// All fields are optional — only the ones you send will be updated.
-// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+
+
+
 export const updateProfile = asyncHandler(async (req, res) => {
   const { name, phone, gender, dob } = req.body;
 
-  // Build an object with only the fields that were actually sent
+  
   const updateFields = {};
 
   if (name)   updateFields.name   = name.trim();
@@ -263,7 +263,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
   if (gender) updateFields.gender = gender;
   if (dob)    updateFields.dob    = new Date(dob);
 
-  // Handle optional avatar upload
+  
   if (req.file?.path) {
     const uploaded = await uploadOnCloudinary(req.file.path);
     if (uploaded?.url) {
